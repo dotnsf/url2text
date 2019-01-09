@@ -1,0 +1,190 @@
+<!DOCTYPE HTML PUBLIC "-//W3C/DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>url2text</title>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+
+<!--
+<link rel="shortcut icon" href="./pi.png" type="image/png"/>
+<link rel="icon" href="./pi.png" type="image/png"/>
+<link rel="apple-touch-icon" href="./pi57.png"/>
+-->
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-web-app-capable" content="yes"/>
+
+<script src="//code.jquery.com/jquery-2.0.3.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
+<link rel="stylesheet" href="//cdn.datatables.net/t/bs-3.3.6/jqc-1.12.0,dt-1.10.11/datatables.min.css"/>
+<script src="//cdn.datatables.net/t/bs-3.3.6/jqc-1.12.0,dt-1.10.11/datatables.min.js"></script>
+
+<link href="./colorbox.css" rel="stylesheet"/>
+<script src="./jquery.colorbox-min.js" type="text/javascript"></script>
+
+
+<script>
+$(function(){
+  initTable();
+});
+
+function initTable(){
+  $('#itemtable').html( '' );
+  $.ajax({
+    type: 'GET',
+    url: '/api/items',
+    success: function( body ){
+      //console.log( body );
+      if( body && body.status ){
+        var items = body.items;
+        items.sort( compareByCreated );
+
+        for( var i = 0; i < items.length; i ++ ){
+          console.log( items[i] );
+          var tr = '<tr><td><img src="' + items[i].info.image + '" width="100"/></td>'
+            + '<td><a class="iframe" rel="external" href="/api/xframe?url=' + items[i].info.url + '" title="">' + items[i].info.title + '</a></td>'
+            + '<td><input class="btn btn-xs btn-danger" type="button" value="DELETE" onClick="deleteItem(\'' + items[i]._id + '\')"/></td>'
+            + '</tr>';
+
+          $('#itemtable').append( tr );
+        }
+
+        var tr0 = '<tr><td>&nbsp;</td>'
+          + '<td><input type="text" id="url" size="100" value="" placeholder="url"/></td>'
+          + '<td><a href="#" class="btn btn-xs btn-primary" data-toggle="modal" data-target="#myModal" onClick="checkUrl()">check</a></td>'
+          + '</tr>';
+        $('#itemtable').append( tr0 );
+
+        $('.iframe').colorbox( { iframe:true, width:"90%", height:"90%" } );
+      }
+    },
+    error: function( err ){
+      console.log( err );
+    }
+  });
+}
+
+function checkUrl(){
+  var url = $('#url').val();
+  if( url ){
+    $.ajax({
+      type: 'GET',
+      url: '/api/info?url=' + url,
+      success: function( body ){
+        //console.log( body );
+
+        if( body && body.status && body.info ){
+          $('#myModalLabel').html( body.info.title );
+          //$('#myModalImage').prop( "src", body.info.image );
+          $('#myModalIFrame').prop( "src", body.info.url );
+        }
+      },
+      error: function( err ){
+        console.log( err );
+      }
+    });
+  }
+}
+
+function deleteItem( id ){
+  if( id && confirm( '削除してよろしいですか？' ) ){
+    $.ajax({
+      type: 'DELETE',
+      url: '/api/item/' + id,
+      success: function( body ){
+        console.log( body );
+        initTable();
+      },
+      error: function( err ){
+        console.log( err );
+      }
+    });
+  }
+}
+
+function record(){
+  var url = $('#myModalIFrame').prop( 'src' );
+  console.log( 'record(): ' + url );
+  if( url ){
+    $.ajax({
+      type: 'GET',
+      url: '/api/info?url=' + url,
+      success: function( body ){
+        if( body && body.status && body.info ){
+          $.ajax({
+            type: 'POST',
+            url: '/api/item',
+            data: { info: body.info },
+            success: function( body1 ){
+              initTable();
+            },
+            error: function( err1 ){
+              console.log( err1 );
+            }
+          });
+        }
+      },
+      error: function( err ){
+        console.log( err );
+      }
+    });
+  }
+
+  initTable();
+}
+
+function compareByCreated( a, b ){
+  var r = 0;
+  if( a.created < b.created ){ r = -1; }
+  else if( a.created > b.created ){ r = 1; }
+
+  return r;
+}
+</script>
+<style>
+#myModal{
+  width: 90%;
+  height: 90%;
+}
+.modal-dialog, .modal-content{
+  width: 100%;
+  height: 100%;
+}
+</style>
+</head>
+<body>
+
+<div class="container" style="padding: 50px 0 0 0">
+  <table width="100%">
+    <tbody id="itemtable">
+    </tbody>
+  </table>
+</div>
+
+
+
+<div class="modal bd-example-modal-lg fade" id="myModal" tabindex="-1" role="dialog" aria-labbelledby="myModal" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="myModalLabel"></h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="myModalBody">
+        <img id="myModalImage"/><br/>
+        <iframe width="90%" height="50%" src="" id="myModalIFrame"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal" onClick="record()">Record</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE HTML PUBLIC "-//W3C/DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>url2text - admin</title>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+
+<!--
+<link rel="shortcut icon" href="./pi.png" type="image/png"/>
+<link rel="icon" href="./pi.png" type="image/png"/>
+<link rel="apple-touch-icon" href="./pi57.png"/>
+-->
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-web-app-capable" content="yes"/>
+
+<script src="//code.jquery.com/jquery-2.0.3.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
+<link rel="stylesheet" href="//cdn.datatables.net/t/bs-3.3.6/jqc-1.12.0,dt-1.10.11/datatables.min.css"/>
+<script src="//cdn.datatables.net/t/bs-3.3.6/jqc-1.12.0,dt-1.10.11/datatables.min.js"></script>
+
+<link href="./colorbox.css" rel="stylesheet"/>
+<script src="./jquery.colorbox-min.js" type="text/javascript"></script>
+
+
+<script>
+$(function(){
+  initTable();
+});
+
+function initTable(){
+  $('#blocktable').html( '' );
+  $.ajax({
+    type: 'GET',
+    url: '/admin_api/item_ids',
+    success: function( body ){
+      console.log( '/admin_api/item_ids' );
+      console.log( body );
+      var item_ids = [];
+      if( body && body.status ){
+        item_ids = body.item_ids;
+      }
+
+      $.ajax({
+        type: 'GET',
+        url: '/admin_api/validate',
+        success: function( body ){
+          body = JSON.parse( body );
+          console.log( '/admin_api/validate' );
+          console.log( body );
+
+          if( body && body.status && body.docs ){
+            body.docs.forEach( function( doc ){
+              //var doc = body.docs[i];  //. { _id: _id, _rev: _rev, body: encrypted-body, hashchainsolo_system: { hash: hash, prev_hash: prev_hash, nonce: nonce, .. } }
+              var tr = '<tr><td>' + cellvalue( doc.hashchainsolo_system.prev_hash, 30 ) + '</td><td>' + cellvalue( doc.hashchainsolo_system.hash, 30 ) + '</td><td id="body_' + doc._id + '">' + cellvalue( doc.body ) + '</td></tr>';
+              $('#blocktable').append( tr );
+              if( item_ids.indexOf( doc._id ) >= 0 ){
+                $.ajax({
+                  type: 'GET',
+                  url: '/admin_api/decrypt',
+                  data: { body: doc.body },
+                  success: function( result ){
+                    result = JSON.parse( result );
+                    console.log( '/admin_api/decrypt' );
+                    console.log( result );
+                    if( result && result.status && result.body ){
+                      $('#body_' + doc._id).html( '<b>' + cellvalue( result.body, 100 ) + '</b>' );
+                    }
+                  },
+                  error: function( err ){
+                    console.log( err );
+                  }
+                });
+              }
+            });
+          }
+        },
+        error: function( err ){
+          console.log( err );
+        }
+      });
+    },
+    error: function( err ){
+      console.log( err );
+    }
+  });
+}
+
+function cellvalue( str, num ){
+  if( !num ){ num = 50; }
+
+  if( str == null ){
+    str = 'null';
+  }else{
+    if( str.length > num ){
+      var str0 = str.substring( 0, num );
+      str = '<a href="#" title="' + str + '">' + str0 + '</a>';
+    }
+  }
+
+  return str;
+}
+</script>
+<style>
+</style>
+</head>
+<body>
+
+<div class="container" style="padding: 50px 0 0 0">
+  <table width="100%" class="table table-bordered">
+    <thead>
+      <tr><th>prev_hash</th><th>hash</th><th>body</th></tr>
+    </thead>
+    <tbody id="blocktable">
+    </tbody>
+  </table>
+</div>
+
+
+
+<div class="modal bd-example-modal-lg fade" id="myModal" tabindex="-1" role="dialog" aria-labbelledby="myModal" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="myModalLabel"></h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="myModalBody">
+        <img id="myModalImage"/><br/>
+        <iframe width="90%" height="50%" src="" id="myModalIFrame"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal" onClick="record()">Record</button>
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</body>
+</html>
