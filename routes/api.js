@@ -67,33 +67,18 @@ router.get( '/items', function( req, res ){
   var offset = req.query.offset ? parseInt( req.query.offset ) : 0;
 
   if( db ){
-    db.list( { include_docs: true }, function( err, body ){
-      if( err ){
-        res.status( 400 );
-        res.write( JSON.stringify( { status: false, message: err }, 2, null ) );
-        res.end();
-      }else{
-        var total = body.total_rows;
-        var items = [];
-        body.rows.forEach( function( item ){
-          var _doc = JSON.parse(JSON.stringify(item.doc));
-          if( _doc._id.indexOf( '_' ) !== 0 ){
-            items.push( _doc );
-          }
-        });
-
-        if( offset || limit ){
-          if( offset + limit > total ){
-            items = items.slice( offset );
-          }else{
-            items = items.slice( offset, offset + limit );
-          }
-        }
-
-        var result = { status: true, total: total, limit: limit, offset: offset, items: items };
-        res.write( JSON.stringify( result, 2, null ) );
-        res.end();
+    var q = {
+      selector: {
+        type: { "$eq": "info" }
       }
+    };
+    if( limit ){ q.limit = limit; }
+    if( offset ){ q.offset = offset; }
+    db.find( q ).then( ( body ) => {
+      //console.log( body );
+      var result = { status: true, limit: limit, offset: offset, items: body.docs };
+      res.write( JSON.stringify( result, 2, null ) );
+      res.end();
     });
   }else{
     res.status( 400 );
@@ -110,12 +95,12 @@ router.post( '/item', function( req, res ){
   var ownername = settings.ownername;
   var item = {
     //_id: id,
+    type: 'info',
     timestamp: ( new Date() ).getTime(),
     info: info
   };
 
   //. （本来は先にブロックチェーンに記録して ID を取得し、その ID を指定して db.insert するべき）
-/*
   var options = {
     url: settings.hashchainsolo + '/doc',
     method: 'POST',
@@ -123,7 +108,11 @@ router.post( '/item', function( req, res ){
       'x-hashchainsolo-key': ownername,
       'Content-Type': 'application/json'
     },
-    json: item
+    json: {
+      type: 'post /api/item',
+      url: info.url,
+      timestamp: item.timestamp
+    }
   };
   request( options, ( err0, res0, body0 ) => {
     if( err0 ){
@@ -131,11 +120,7 @@ router.post( '/item', function( req, res ){
       res.write( JSON.stringify( { status: false, error: err0 }, 2, null ) );
       res.end();
     }else{
-      console.log( 'body0' );
-      console.log( body0 ); //. "Payload Too Large"
-      var id = body0.id;
-*/
-      var id = uuidv1();
+      var id = body0.message.id;
 
       db.insert( item, id, function( err, body, header ){
         if( err ){
@@ -150,10 +135,15 @@ router.post( '/item', function( req, res ){
           res.end();
         }
       });
-/*
+
+      var item0 = {
+        type: 'id',
+        info_id: id,
+        timestamp: ( new Date() ).getTime()
+      };
+      db.insert( item0, function( err, body, header ){} );
     }
   });
-*/
 });
 
 router.delete( '/item/:id', function( req, res ){
@@ -167,13 +157,7 @@ router.delete( '/item/:id', function( req, res ){
         res.write( JSON.stringify( { status: false, message: err }, 2, null ) );
         res.end();
       }else{
-/*
         var ownername = settings.ownername;
-        var item = {
-          //_id: id,
-          timestamp: ( new Date() ).getTime(),
-          delete_id: id
-        };
         var options = {
           url: settings.hashchainsolo + '/doc',
           method: 'POST',
@@ -181,7 +165,10 @@ router.delete( '/item/:id', function( req, res ){
             'x-hashchainsolo-key': ownername,
             'Content-Type': 'application/json'
           },
-          json: item
+          json: {
+            type: 'delete /api/item/' + id,
+            timestamp: ( new Date() ).getTime()
+          }
         };
         request( options, ( err0, res0, body0 ) => {
           if( err0 ){
@@ -191,7 +178,6 @@ router.delete( '/item/:id', function( req, res ){
           }else{
             console.log( 'body0' );
             console.log( body0 );
-*/
             db.destroy( id, doc._rev, function( err, body ){
               if( err ){
                 res.status( 400 );
@@ -202,10 +188,8 @@ router.delete( '/item/:id', function( req, res ){
                 res.end();
               }
             });
-/*
           }
         });
-*/
       }
     });
   }else{

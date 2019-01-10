@@ -105,6 +105,7 @@ function deleteItem( id ){
 
 function record(){
   var url = $('#myModalIFrame').prop( 'src' );
+  var comment = $('#myModalComment').prop( 'src' );
   console.log( 'record(): ' + url );
   if( url ){
     $.ajax({
@@ -112,6 +113,7 @@ function record(){
       url: '/api/info?url=' + url,
       success: function( body ){
         if( body && body.status && body.info ){
+          if( comment ){ body.info.comment = comment; }
           $.ajax({
             type: 'POST',
             url: '/api/item',
@@ -176,6 +178,7 @@ function compareByCreated( a, b ){
       <div class="modal-body" id="myModalBody">
         <img id="myModalImage"/><br/>
         <iframe width="90%" height="50%" src="" id="myModalIFrame"></iframe>
+        <input type="text" class="control-form" id="myModalComment" value="" placeholder="comment.."/>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-dismiss="modal" onClick="record()">Record</button>

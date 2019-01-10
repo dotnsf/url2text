@@ -35,11 +35,13 @@ function initTable(){
     type: 'GET',
     url: '/admin_api/item_ids',
     success: function( body ){
-      console.log( '/admin_api/item_ids' );
-      console.log( body );
+      //console.log( '/admin_api/item_ids' );
+      //console.log( body );
       var item_ids = [];
       if( body && body.status ){
-        item_ids = body.item_ids;
+        body.item_ids.forEach( function( item_id ){
+          item_ids.push( item_id.info_id );
+        });
       }
 
       $.ajax({
@@ -47,25 +49,24 @@ function initTable(){
         url: '/admin_api/validate',
         success: function( body ){
           body = JSON.parse( body );
-          console.log( '/admin_api/validate' );
-          console.log( body );
+          //console.log( '/admin_api/validate' );
+          //console.log( body );
 
           if( body && body.status && body.docs ){
             body.docs.forEach( function( doc ){
               //var doc = body.docs[i];  //. { _id: _id, _rev: _rev, body: encrypted-body, hashchainsolo_system: { hash: hash, prev_hash: prev_hash, nonce: nonce, .. } }
-              var tr = '<tr><td>' + cellvalue( doc.hashchainsolo_system.prev_hash, 30 ) + '</td><td>' + cellvalue( doc.hashchainsolo_system.hash, 30 ) + '</td><td id="body_' + doc._id + '">' + cellvalue( doc.body ) + '</td></tr>';
+              var tr = '<tr id="' + doc._id + '"><td>' + cellvalue( doc.hashchainsolo_system.prev_hash, 30 ) + '</td><td>' + cellvalue( doc.hashchainsolo_system.hash, 30 ) + '</td><td id="body_' + doc._id + '">' + cellvalue( doc.body ) + '</td></tr>';
               $('#blocktable').append( tr );
               if( item_ids.indexOf( doc._id ) >= 0 ){
                 $.ajax({
-                  type: 'GET',
+                  type: 'POST',
                   url: '/admin_api/decrypt',
                   data: { body: doc.body },
                   success: function( result ){
-                    result = JSON.parse( result );
-                    console.log( '/admin_api/decrypt' );
-                    console.log( result );
+                    //console.log( '/admin_api/decrypt' );
+                    //console.log( result );
                     if( result && result.status && result.body ){
-                      $('#body_' + doc._id).html( '<b>' + cellvalue( result.body, 100 ) + '</b>' );
+                      $('#body_' + doc._id).html( '<b>' + cellvalue( JSON.stringify( result.body ), 100 ) + '</b>' );
                     }
                   },
                   error: function( err ){
@@ -94,7 +95,7 @@ function cellvalue( str, num ){
     str = 'null';
   }else{
     if( str.length > num ){
-      var str0 = str.substring( 0, num );
+      var str0 = str.substring( 0, num ) + "...";
       str = '<a href="#" title="' + str + '">' + str0 + '</a>';
     }
   }

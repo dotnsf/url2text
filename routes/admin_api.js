@@ -45,33 +45,17 @@ router.get( '/item_ids', function( req, res ){
 
   if( db ){
     //. このロジックだと現存しているドキュメントの id しか取得できない
-    db.list( {}, function( err, body ){
-      if( err ){
-        res.status( 400 );
-        res.write( JSON.stringify( { status: false, message: err }, 2, null ) );
-        res.end();
-      }else{
-        var total = body.total_rows;
-        var item_ids = [];
-        body.rows.forEach( function( item ){
-          var _doc = JSON.parse(JSON.stringify(item.doc));
-          if( _doc._id.indexOf( '_' ) !== 0 ){
-            item_ids.push( _doc._id );
-          }
-        });
-
-        if( offset || limit ){
-          if( offset + limit > total ){
-            item_ids = item_ids.slice( offset );
-          }else{
-            item_ids = item_ids.slice( offset, offset + limit );
-          }
-        }
-
-        var result = { status: true, total: total, limit: limit, offset: offset, item_ids: item_ids };
-        res.write( JSON.stringify( result, 2, null ) );
-        res.end();
+    var q = {
+      selector: {
+        type: { "$eq": "id" }
       }
+    };
+    if( limit ){ q.limit = limit; }
+    if( offset ){ q.offset = offset; }
+    db.find( q ).then( ( body ) => {
+      var result = { status: true, limit: limit, offset: offset, item_ids: body.docs };
+      res.write( JSON.stringify( result, 2, null ) );
+      res.end();
     });
   }else{
     res.status( 400 );
@@ -107,6 +91,8 @@ router.post( '/decrypt', function( req, res ){
   var body = req.body.body;
   var key = settings.ownername;
   var data = { key: key, body: body };
+  console.log( 'POST /admin_api/decrypt : data' );
+  console.log( data );
   var options = {
     url: settings.hashchainsolo + '/decrypt',
     method: 'POST',
@@ -121,7 +107,7 @@ router.post( '/decrypt', function( req, res ){
       res.write( JSON.stringify( { status: false, error: err0 }, 2, null ) );
       res.end();
     }else{
-      //console.log( 'body0 = ' + JSON.stringify(body0) );  //. { status: true, body: "XXXXX" }
+      console.log( 'body0 = ' + JSON.stringify(body0) );  //. { status: true, body: "XXXXX" }
       var p = JSON.stringify( body0, null, 2 );
       res.write( p );
       res.end();
